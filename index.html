@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AR-UFO - OdotNYC</title>
   <meta name="description" content="AR-UFO cyberpunk mobile-first UFO viewer with storm-cloud splash screen, futuristic UI, and touch-friendly controls." />
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
   <style>
     :root {
       --bg-1: #020202;
@@ -333,6 +333,62 @@
 
     .chip strong { color: var(--green-2); }
 
+    .ar-button-wrap {
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      z-index: 5;
+      display: none;
+    }
+
+    model-viewer[ar-status="not-presenting"] .ar-button-wrap,
+    model-viewer[ar-status="failed"] .ar-button-wrap,
+    model-viewer[ar-status="session-started"] .ar-button-wrap {
+      display: block;
+    }
+
+    .ar-launch-btn {
+      appearance: none;
+      border: 1px solid rgba(141,255,141,0.38);
+      background: linear-gradient(135deg, rgba(141,255,141,0.18), rgba(255,255,255,0.10));
+      color: var(--text);
+      border-radius: 999px;
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35), 0 0 16px rgba(141,255,141,0.15);
+      backdrop-filter: blur(12px);
+    }
+
+    .ar-helper {
+      position: absolute;
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%);
+      z-index: 4;
+      width: min(92%, 520px);
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(141,255,141,0.18);
+      background: rgba(4, 9, 17, 0.78);
+      backdrop-filter: blur(10px);
+      text-align: center;
+      color: var(--white-soft);
+      font-size: 0.92rem;
+      line-height: 1.45;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    model-viewer[data-mobile="true"] .ar-helper,
+    model-viewer[ar-status="session-started"] .ar-helper {
+      opacity: 1;
+    }
+
+
     .sr-only {
       position: absolute;
       width: 1px;
@@ -461,9 +517,14 @@
             camera-controls
             interaction-prompt="auto"
             touch-action="pan-y"
-            shadow-intensity="1.2"
-            exposure="1"
-            environment-image="neutral"
+            loading="eager"
+            reveal="auto"
+            shadow-intensity="1.6"
+            shadow-softness="0.9"
+            exposure="1.2"
+            tone-mapping="commerce"
+            environment-image="legacy"
+            skybox-image="legacy"
             camera-orbit="0deg 75deg 110%"
             min-camera-orbit="auto auto 50%"
             max-camera-orbit="auto auto 240%"
@@ -474,7 +535,13 @@
             auto-rotate
             rotation-per-second="10deg"
             ar
+            ar-modes="scene-viewer webxr quick-look"
+            ar-scale="fixed"
+            ar-placement="floor"
+            xr-environment
           >
+            <button slot="ar-button" class="ar-launch-btn" type="button">View in your space</button>
+            <div class="ar-helper" id="arHelper">On mobile, tap <strong>View in your space</strong>, then slowly move your phone so AR can detect a flat surface and place the UFO with full materials visible.</div>
             <div class="sr-only">Interactive 3D AR-UFO</div>
           </model-viewer>
 
@@ -499,6 +566,27 @@
     const intro = document.getElementById('intro');
     const enterSplash = document.getElementById('enterSplash');
     const launchViewer = document.getElementById('launchViewer');
+    const model = document.getElementById('model');
+    const isMobile = window.matchMedia('(max-width: 900px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      model.dataset.mobile = 'true';
+    }
+
+    model.addEventListener('load', () => {
+      model.dismissPoster?.();
+      model.jumpCameraToGoal?.();
+    });
+
+    model.addEventListener('error', (event) => {
+      console.error('Model failed to load:', event);
+    });
+
+    model.addEventListener('ar-status', (event) => {
+      if (event.detail.status === 'failed') {
+        console.warn('AR launch failed. Confirm the page is on HTTPS, the device supports AR, and the GLB has embedded textures.');
+      }
+    });
 
     enterSplash.addEventListener('click', () => {
       splash.classList.add('hidden');
