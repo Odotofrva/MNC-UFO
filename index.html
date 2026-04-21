@@ -315,7 +315,7 @@
 
     model.addEventListener('error', (event) => {
       const detail = event?.detail?.type ? ` (${event.detail.type})` : '';
-      setStatus(`The model could not load${detail}. Check that retro_ufo.glb is in the same folder and that the page is being served over HTTPS or localhost.`, 'error');
+      setStatus(`If There's An Error, Please Let OdotNYC know right away. Thanks!`, 'error');
       console.error('model-viewer error:', event);
     });
 
