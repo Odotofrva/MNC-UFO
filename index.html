@@ -3,284 +3,717 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AR-UFO by OdotNYC</title>
-  <meta name="description" content="Responsive AR-UFO viewer for desktop and mobile with real-world AR support on supported devices." />
+  <title>AR-UFO Mission Control | OdotNYC</title>
+  <meta name="description" content="A cinematic AR-UFO mission control experience with alien planets, Three.js space atmosphere, and mobile AR support." />
+  <meta name="theme-color" content="#05070a" />
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.2.0/model-viewer.min.js"></script>
   <style>
     :root {
-      --bg: #050505;
-      --panel: rgba(14, 14, 14, 0.88);
-      --line: rgba(120, 255, 120, 0.24);
-      --line-strong: rgba(120, 255, 120, 0.46);
-      --text: #f4f4f4;
-      --muted: #b7b7b7;
-      --green: #98ff98;
-      --shadow: 0 20px 50px rgba(0,0,0,0.5);
-      --radius: 24px;
+      --bg: #030508;
+      --panel: rgba(4, 10, 14, 0.74);
+      --panel-2: rgba(12, 22, 20, 0.62);
+      --line: rgba(119, 255, 167, 0.22);
+      --line-strong: rgba(119, 255, 167, 0.56);
+      --text: #f2fff7;
+      --muted: #a7beb4;
+      --green: #88ffab;
+      --cyan: #8ee8ff;
+      --violet: #a485ff;
+      --amber: #ffd166;
+      --danger: #ff6d8f;
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+      --radius: 28px;
+      --grid: rgba(136, 255, 171, 0.07);
     }
 
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
+    html { scroll-behavior: smooth; }
+    html, body { min-height: 100%; margin: 0; }
     body {
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top, rgba(120,255,120,0.07), transparent 22%),
-        linear-gradient(180deg, #020202 0%, #080808 52%, #101010 100%);
+      overflow-x: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
       color: var(--text);
     }
 
-    .page {
-      min-height: 100dvh;
-      display: grid;
-      grid-template-rows: auto auto 1fr auto;
-      gap: 16px;
-      padding: 18px;
-      max-width: 1280px;
-      margin: 0 auto;
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
     }
 
-    .pill, .panel {
+    body::before {
+      background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black 0%, transparent 75%);
+    }
+
+    body::after {
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(255,255,255,0.025) 0,
+        rgba(255,255,255,0.025) 1px,
+        transparent 1px,
+        transparent 5px
+      );
+      mix-blend-mode: soft-light;
+      opacity: .4;
+    }
+
+    #spaceCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(164, 133, 255, .18), transparent 23%),
+        radial-gradient(circle at 80% 10%, rgba(0, 255, 196, .14), transparent 23%),
+        radial-gradient(circle at 60% 80%, rgba(255, 209, 102, .12), transparent 22%),
+        linear-gradient(180deg, #020307 0%, #071015 46%, #020204 100%);
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: .08;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 320 320' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+    }
+
+    .splash {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, rgba(136, 255, 171, .16), transparent 26%),
+        linear-gradient(180deg, #020303, #06100c 52%, #010202);
+      animation: splashOut .75s ease 2.75s forwards;
+    }
+
+    .splash-card {
+      width: min(440px, calc(100% - 36px));
+      border: 1px solid var(--line-strong);
+      border-radius: 30px;
+      padding: 28px;
+      text-align: center;
+      background: rgba(2, 8, 8, .74);
+      box-shadow: 0 0 42px rgba(136, 255, 171, .16), var(--shadow);
+      backdrop-filter: blur(16px);
+      transform: translateZ(0);
+    }
+
+    .splash-logo {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 18px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(136, 255, 171, .35);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle, rgba(136,255,171,.24), transparent 58%),
+        rgba(255,255,255,.03);
+      font-size: 2.4rem;
+      text-shadow: 0 0 22px rgba(136, 255, 171, .75);
+      animation: pulse 1.15s ease-in-out infinite alternate;
+    }
+
+    .splash h1,
+    .hero h1,
+    .mission-title {
+      letter-spacing: -.06em;
+    }
+
+    .splash h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.7rem); line-height: .95; }
+    .splash p { margin: 12px 0 0; color: var(--muted); text-transform: uppercase; letter-spacing: .2em; font-size: .72rem; }
+
+    @keyframes splashOut { to { opacity: 0; visibility: hidden; transform: scale(1.04); } }
+    @keyframes pulse { from { transform: scale(.98); } to { transform: scale(1.04); box-shadow: 0 0 34px rgba(136,255,171,.28); } }
+
+    .page {
+      position: relative;
+      z-index: 4;
+      min-height: 100dvh;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 14px;
       border: 1px solid var(--line);
-      background: var(--panel);
-      backdrop-filter: blur(10px);
+      border-radius: 999px;
+      background: rgba(2, 7, 9, .72);
+      backdrop-filter: blur(16px);
       box-shadow: var(--shadow);
     }
 
-    .pill {
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: .78rem;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(136,255,171,.11);
+      border: 1px solid rgba(136,255,171,.42);
+      box-shadow: 0 0 24px rgba(136,255,171,.2);
+    }
+
+    .navlinks { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .navlinks a, .mission-btn {
+      color: #dffff0;
+      text-decoration: none;
+      border: 1px solid rgba(136,255,171,.18);
+      background: rgba(255,255,255,.035);
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: .78rem;
+      font-weight: 800;
+      transition: transform .22s ease, border-color .22s ease, background .22s ease;
+      cursor: pointer;
+    }
+
+    .navlinks a:hover,
+    .mission-btn:hover { transform: translateY(-2px); border-color: var(--line-strong); background: rgba(136,255,171,.1); }
+
+    .hero {
+      min-height: calc(100dvh - 70px);
+      display: grid;
+      grid-template-columns: minmax(0, .92fr) minmax(320px, 1.08fr);
+      gap: 22px;
+      align-items: center;
+      padding: 58px 0 28px;
+    }
+
+    .hero-copy { display: grid; gap: 20px; }
+    .eyebrow {
+      width: fit-content;
       display: inline-flex;
       align-items: center;
       gap: 10px;
       padding: 10px 14px;
       border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(2, 8, 8, .58);
+      color: #d9ffe4;
+      font-size: .74rem;
+      font-weight: 900;
       text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: #d9ffd9;
-      margin-top: 8px;
+      letter-spacing: .16em;
+      box-shadow: 0 0 28px rgba(136,255,171,.08);
     }
 
-    .dot {
+    .live-dot {
       width: 10px;
       height: 10px;
-      border-radius: 999px;
+      border-radius: 50%;
       background: var(--green);
-      box-shadow: 0 0 18px rgba(152,255,152,0.9);
-    }
-
-    h1, h2, p { margin: 0; }
-
-    .hero {
-      display: grid;
-      gap: 10px;
+      box-shadow: 0 0 18px rgba(136,255,171,.9);
     }
 
     .hero h1 {
-      font-size: clamp(1.9rem, 4vw, 3.5rem);
-      line-height: 1.02;
+      margin: 0;
+      font-size: clamp(3.1rem, 8vw, 8.6rem);
+      line-height: .82;
+      text-transform: uppercase;
+      text-shadow: 0 0 40px rgba(136,255,171,.12);
+    }
+
+    .hero h1 span {
+      display: block;
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(242,255,247,.72);
+      text-shadow: none;
     }
 
     .hero p {
-      color: var(--muted);
-      max-width: 860px;
-      line-height: 1.6;
-    }
-
-    .notice-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    }
-
-    .panel {
-      border-radius: var(--radius);
-      padding: 16px;
-    }
-
-    .panel h2 {
-      font-size: 1rem;
-      margin-bottom: 8px;
-    }
-
-    .panel p, .panel li {
-      color: var(--muted);
-      line-height: 1.55;
-      font-size: 0.95rem;
-    }
-
-    .panel ul {
+      max-width: 720px;
       margin: 0;
-      padding-left: 18px;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.45vw, 1.22rem);
+      line-height: 1.75;
     }
 
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .primary, .secondary, .ar-button {
+      appearance: none;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 14px 18px;
+      color: #041109;
+      background: linear-gradient(135deg, var(--green), #dffff0);
+      font-weight: 950;
+      text-decoration: none;
+      box-shadow: 0 16px 44px rgba(136,255,171,.18);
+      transition: transform .24s ease, box-shadow .24s ease;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .secondary {
+      color: var(--text);
+      background: rgba(255,255,255,.045);
+      border-color: rgba(255,255,255,.14);
+      box-shadow: none;
+    }
+
+    .primary:hover, .secondary:hover, .ar-button:hover { transform: translateY(-3px) scale(1.01); }
+
+    .telemetry {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric, .panel, .viewer-shell, .ticker, .mini-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .metric {
+      border-radius: 22px;
+      padding: 14px;
+      transition: transform .24s ease, border-color .24s ease;
+    }
+
+    .metric:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .metric strong { display: block; font-size: 1.34rem; color: var(--green); }
+    .metric span { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; }
+
+    .viewer-column { display: grid; gap: 14px; }
     .viewer-shell {
       position: relative;
-      min-height: 62dvh;
-      border-radius: 28px;
+      min-height: 68dvh;
+      border-radius: 34px;
       overflow: hidden;
-      border: 1px solid var(--line);
       background:
-        radial-gradient(circle at 50% 42%, rgba(152,255,152,0.1), transparent 20%),
-        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
-      box-shadow: var(--shadow);
+        radial-gradient(circle at 50% 52%, rgba(136,255,171,.18), transparent 24%),
+        radial-gradient(circle at 20% 12%, rgba(142,232,255,.12), transparent 26%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+      isolation: isolate;
+    }
+
+    .viewer-shell::before {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      z-index: -1;
+      border-radius: 28px;
+      border: 1px solid rgba(136,255,171,.14);
+      background:
+        linear-gradient(transparent 49%, rgba(136,255,171,.09) 50%, transparent 51%),
+        linear-gradient(90deg, transparent 49%, rgba(136,255,171,.09) 50%, transparent 51%);
+      background-size: 100% 80px, 80px 100%;
+      opacity: .8;
     }
 
     model-viewer {
       width: 100%;
       height: 100%;
-      min-height: 62dvh;
+      min-height: 68dvh;
       background: transparent;
       --poster-color: transparent;
     }
 
+    .viewer-label {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 12px;
+      border: 1px solid rgba(136,255,171,.24);
+      border-radius: 999px;
+      background: rgba(2,7,9,.66);
+      color: #dffff0;
+      font-size: .72rem;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      backdrop-filter: blur(12px);
+    }
+
+    .ar-button {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 5;
+      color: #031009;
+    }
+
     .hud {
       position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
+      left: 16px;
+      right: 16px;
+      bottom: 18px;
+      z-index: 4;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      justify-content: center;
+      justify-content: flex-start;
+      padding-right: 180px;
       pointer-events: none;
     }
 
     .chip {
       border-radius: 999px;
-      padding: 10px 12px;
-      background: rgba(8, 10, 14, 0.75);
-      border: 1px solid rgba(152,255,152,0.18);
-      color: #f5f5f5;
-      font-size: 0.84rem;
+      padding: 9px 11px;
+      background: rgba(2, 7, 9, 0.74);
+      border: 1px solid rgba(136,255,171,0.18);
+      color: #f5fff8;
+      font-size: 0.78rem;
       backdrop-filter: blur(10px);
     }
+    .chip strong { color: #d9ffe4; }
 
-    .chip strong { color: #ddffdd; }
-
-    .ar-button {
-      position: absolute;
-      right: 16px;
-      bottom: 16px;
-      border: 1px solid var(--line-strong);
+    .ticker {
+      overflow: hidden;
       border-radius: 999px;
-      padding: 14px 18px;
-      background: linear-gradient(135deg, rgba(152,255,152,0.18), rgba(255,255,255,0.08));
-      color: white;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: var(--shadow);
+      white-space: nowrap;
+      padding: 10px 0;
+      color: #dcffe7;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+    }
+    .ticker-track {
+      display: inline-flex;
+      gap: 30px;
+      padding-left: 100%;
+      animation: ticker 24s linear infinite;
+    }
+    @keyframes ticker { to { transform: translateX(-100%); } }
+
+    .mission-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      margin: 24px 0 32px;
     }
 
-    .ar-button:hover,
-    .ar-button:focus-visible {
-      outline: none;
-      transform: translateY(-1px);
-      border-color: rgba(152,255,152,0.7);
+    .panel, .mini-card {
+      border-radius: var(--radius);
+      padding: 18px;
     }
+
+    .panel h2, .mini-card h3, .mission-title {
+      margin: 0 0 10px;
+      text-transform: uppercase;
+      letter-spacing: -.03em;
+    }
+
+    .panel p, .panel li, .mini-card p, .status {
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: .96rem;
+    }
+
+    .panel ul { margin: 0; padding-left: 20px; }
+    .mini-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .mini-card { background: var(--panel-2); transition: transform .24s ease, border-color .24s ease; }
+    .mini-card:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .mini-card h3 { font-size: .95rem; color: #e9fff0; }
+    .mini-card p { margin: 0; font-size: .88rem; }
 
     .status {
-      margin-top: 6px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      font-size: 0.94rem;
       border: 1px solid var(--line);
-      background: rgba(10,10,10,0.72);
-      color: var(--muted);
+      background: rgba(2, 7, 9, .72);
+      border-radius: 18px;
+      padding: 12px 14px;
     }
-
     .status strong { color: var(--text); }
-    .status.error {
-      border-color: rgba(255,120,120,0.45);
-      color: #ffd9d9;
-      background: rgba(45, 10, 10, 0.55);
-    }
-
-    .status.ok {
-      border-color: rgba(120,255,120,0.35);
-      color: #d7ffd7;
-    }
-
+    .status.error { border-color: rgba(255,109,143,.48); color: #ffd9e2; background: rgba(45, 8, 17, .55); }
+    .status.ok { border-color: rgba(136,255,171,.44); color: #d9ffe4; }
     .hidden { display: none; }
 
     .footer-note {
-      color: #9e9e9e;
-      font-size: 0.88rem;
-      line-height: 1.6;
-      padding-bottom: 8px;
+      color: rgba(242,255,247,.62);
+      font-size: .86rem;
+      line-height: 1.7;
+      padding: 18px 6px 10px;
+      text-align: center;
     }
 
-    @media (max-width: 700px) {
-      .page { padding: 14px; }
-      model-viewer, .viewer-shell { min-height: 56dvh; }
-      .ar-button { right: 12px; bottom: 12px; }
+    @media (max-width: 980px) {
+      .hero, .mission-grid { grid-template-columns: 1fr; }
+      .hero { padding-top: 36px; }
+      .viewer-shell, model-viewer { min-height: 58dvh; }
+      .topbar { align-items: flex-start; border-radius: 24px; flex-direction: column; }
+      .navlinks { justify-content: flex-start; }
+    }
+
+    @media (max-width: 640px) {
+      .page { padding: 12px; }
+      .hero h1 { font-size: clamp(3rem, 17vw, 5rem); }
+      .telemetry, .mini-grid { grid-template-columns: 1fr; }
+      .viewer-shell, model-viewer { min-height: 56dvh; }
+      .hud { padding-right: 0; bottom: 76px; }
+      .ar-button { left: 14px; right: 14px; width: calc(100% - 28px); }
+      .navlinks a { font-size: .72rem; padding: 8px 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+      .splash { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <div class="pill"><span class="dot" aria-hidden="true"></span><span>AR-UFO | OdotNYC.xyz</span></div>
+  <canvas id="spaceCanvas" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
 
-
-    <div class="notice-grid">
-      <section class="panel">
-        <h2>What to expect</h2>
-        <ul>
-          <li>Desktop should show the 3D UFO in the viewer.</li>
-          <li>Supported mobile devices should show a <strong>View in your space</strong> button.</li>
-          <li>After AR starts, move the phone slowly so the device can detect a flat surface.</li>
-        </ul>
-      </section>
-      <section class="panel">
-        <h2>Launch requirements</h2>
-        <ul>
-          <li>Use Chrome if using Android devices. Thanks! - OdotNYC</li>
-          
-        </ul>
-      </section>
+  <div class="splash" aria-hidden="true">
+    <div class="splash-card">
+      <div class="splash-logo">🛸</div>
+      <h1>AR-UFO</h1>
+      <p>Mission Control Boot Sequence</p>
     </div>
+  </div>
 
-    <section class="viewer-shell">
-      <model-viewer
-        id="model"
-        src="./retro_ufo.glb"
-        alt="Interactive AR UFO 3D model"
-        loading="eager"
-        reveal="auto"
-        camera-controls
-        touch-action="pan-y"
-        interaction-prompt="auto"
-        auto-rotate
-        rotation-per-second="8deg"
-        environment-image="legacy"
-        skybox-image="legacy"
-        exposure="1.15"
-        shadow-intensity="1.4"
-        shadow-softness="0.9"
-        tone-mapping="commerce"
-        camera-orbit="0deg 75deg 105%"
-        field-of-view="28deg"
-        min-field-of-view="16deg"
-        max-field-of-view="70deg"
-        ar
-        ar-modes="webxr scene-viewer quick-look"
-        ar-placement="floor"
-        ar-scale="fixed"
-        xr-environment>
-        <button class="ar-button" slot="ar-button">View in your space</button>
-      </model-viewer>
+  <main class="page">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="AR-UFO OdotNYC home">
+        <span class="brand-mark">🛸</span>
+        <span>AR-UFO // OdotNYC</span>
+      </a>
+      <nav class="navlinks" aria-label="Mission navigation">
+        <a href="#viewer">3D Dock</a>
+        <a href="#briefing">Briefing</a>
+        <a href="#launch">Launch Rules</a>
+      </nav>
+    </header>
 
-      <div class="hud" aria-hidden="true">
-        <div class="chip"><strong>Drag</strong> to rotate</div>
-        <div class="chip"><strong>Scroll / Pinch</strong> to zoom</div>
-        <div class="chip"><strong>AR</strong> on supported phones</div>
+    <section id="top" class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="live-dot"></span> Signal locked · Alien world detected</div>
+        <h1>Enter the <span>UFO Zone</span></h1>
+        <p>
+          Step into a cinematic mission-control interface built for the AR-UFO experience. Rotate the craft in the orbital dock, scan the launch status, then open the portal on mobile to place the UFO in your real space.
+        </p>
+        <div class="actions">
+          <a class="primary" href="#viewer">Begin Mission</a>
+          <a class="secondary" href="#launch">AR Instructions</a>
+        </div>
+        <div class="telemetry" aria-label="Mission telemetry">
+          <div class="metric"><strong>03</strong><span>Planets tracked</span></div>
+          <div class="metric"><strong>AR</strong><span>Mobile ready</span></div>
+          <div class="metric"><strong>360°</strong><span>Orbit controls</span></div>
+        </div>
+      </div>
+
+      <div class="viewer-column" id="viewer">
+        <div class="ticker" aria-hidden="true">
+          <div class="ticker-track">
+            <span>Transmission: Welcome to OdotNYC Mission Control</span>
+            <span>Scan the sky · Drag the craft · Tap AR on supported phones</span>
+            <span>Chrome recommended for Android</span>
+            <span>Secure HTTPS required for real-world AR</span>
+          </div>
+        </div>
+
+        <section class="viewer-shell" aria-label="Interactive UFO model viewer">
+          <div class="viewer-label"><span class="live-dot"></span> Orbital Dock Online</div>
+          <model-viewer
+            id="model"
+            src="./retro_ufo.glb"
+            alt="Interactive AR UFO 3D model"
+            loading="eager"
+            reveal="auto"
+            camera-controls
+            touch-action="pan-y"
+            interaction-prompt="auto"
+            auto-rotate
+            rotation-per-second="8deg"
+            environment-image="legacy"
+            skybox-image="legacy"
+            exposure="1.18"
+            shadow-intensity="1.45"
+            shadow-softness="0.9"
+            tone-mapping="commerce"
+            camera-orbit="0deg 75deg 105%"
+            field-of-view="28deg"
+            min-field-of-view="16deg"
+            max-field-of-view="70deg"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            ar-placement="floor"
+            ar-scale="fixed"
+            xr-environment>
+            <button class="ar-button" slot="ar-button">View in your space</button>
+          </model-viewer>
+
+          <div class="hud" aria-hidden="true">
+            <div class="chip"><strong>Drag</strong> to rotate</div>
+            <div class="chip"><strong>Pinch</strong> to zoom</div>
+            <div class="chip"><strong>AR</strong> on supported phones</div>
+          </div>
+        </section>
+
+        <div id="status" class="status"><strong>Status:</strong> Waiting for the UFO model to load…</div>
+        <div id="secureWarning" class="status hidden error"></div>
       </div>
     </section>
 
-    <div id="status" class="status"><strong>Status:</strong> Waiting for the model to load…</div>
-    <div id="secureWarning" class="status hidden error"></div>
+    <section class="mission-grid" id="briefing">
+      <div class="panel">
+        <h2 class="mission-title">Mission Briefing</h2>
+        <p>
+          Welcome To AR-UFO, an interactive Augmented Reality experience built by OdotNYC (Founder of RoboTechi Co). Enjoy the experience!
+        </p>
+      </div>
+      <div class="panel" id="launch">
+        <h2>Launch Requirements</h2>
+        <ul>
+          <li>Use Chrome on Android for the smoothest AR launch.</li>
+          <li>Host with HTTPS, such as GitHub Pages, for real-world AR support.</li>
+          <li>After AR opens, move the phone slowly until the floor is detected.</li>
+        </ul>
+      </div>
+    </section>
 
-  </div>
+    <section class="mini-grid" aria-label="Feature cards">
+      <article class="mini-card">
+        <h3>Alien Atmosphere</h3>
+        <p>Three.js renders floating planets and a starfield behind the entire application.</p>
+      </article>
+      <article class="mini-card">
+        <h3>Mission Control UI</h3>
+        <p>HUD chips, telemetry counters, grid overlays, scanlines, and ticker movement add the control-room vibe.</p>
+      </article>
+      <article class="mini-card">
+        <h3>Mobile First</h3>
+        <p>The interface stacks cleanly on phones with a full-width AR launch button.</p>
+      </article>
+      <article class="mini-card">
+        <h3>Same Model Path</h3>
+       <!-- <p>Keep your <code>retro_ufo.glb</code> file beside this HTML file and the viewer will load it.</p> --> 
+      </article>
+    </section>
+
+    <p class="footer-note">AR-UFO by OdotNYC · Built for web viewing, mobile AR launches, and futuristic mission-control storytelling.</p>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
+
+    const canvas = document.getElementById('spaceCanvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 34);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const group = new THREE.Group();
+    scene.add(group);
+
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 900;
+    const positions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 130;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 95;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 90;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xbfffd0, size: 0.065, transparent: true, opacity: 0.72 }));
+    group.add(stars);
+
+    const makePlanet = ({ radius, color, emissive, position, rings = false }) => {
+      const planet = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 48, 48),
+        new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: 0.18, roughness: 0.82, metalness: 0.08 })
+      );
+      planet.position.set(...position);
+      group.add(planet);
+
+      if (rings) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(radius * 1.35, radius * 1.9, 96),
+          new THREE.MeshBasicMaterial({ color: 0x88ffab, transparent: true, opacity: 0.22, side: THREE.DoubleSide })
+        );
+        ring.position.copy(planet.position);
+        ring.rotation.x = Math.PI / 2.35;
+        ring.rotation.y = -0.45;
+        group.add(ring);
+        planet.userData.ring = ring;
+      }
+      return planet;
+    };
+
+    const planets = [
+      makePlanet({ radius: 4.8, color: 0x1a3d2a, emissive: 0x0aff88, position: [-22, 11, -18], rings: true }),
+      makePlanet({ radius: 2.4, color: 0x30224f, emissive: 0x875cff, position: [20, -11, -11] }),
+      makePlanet({ radius: 1.55, color: 0x4f3b1c, emissive: 0xffd166, position: [11, 13, -6] })
+    ];
+
+    scene.add(new THREE.AmbientLight(0x88ffab, 0.68));
+    const light = new THREE.PointLight(0x8ee8ff, 2.2, 120);
+    light.position.set(2, 8, 20);
+    scene.add(light);
+
+    const mouse = { x: 0, y: 0 };
+    window.addEventListener('pointermove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth - 0.5) * 2;
+      mouse.y = (event.clientY / window.innerHeight - 0.5) * 2;
+    });
+
+    function animate(time) {
+      const t = time * 0.001;
+      stars.rotation.y = t * 0.018;
+      stars.rotation.x = Math.sin(t * 0.18) * 0.03;
+      group.rotation.y += (mouse.x * 0.04 - group.rotation.y) * 0.025;
+      group.rotation.x += (-mouse.y * 0.03 - group.rotation.x) * 0.025;
+      planets.forEach((planet, index) => {
+        planet.rotation.y += 0.002 + index * 0.001;
+        planet.position.y += Math.sin(t + index) * 0.002;
+        if (planet.userData.ring) planet.userData.ring.rotation.z += 0.0015;
+      });
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate(0);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
 
   <script>
     const model = document.getElementById('model');
@@ -298,22 +731,19 @@
 
     if (isFileProtocol) {
       secureWarning.classList.remove('hidden');
-      secureWarning.innerHTML = '<strong>Important:</strong> You opened this page as a local file. That can block <code>model-viewer</code> loading and it also prevents reliable Android AR launch. Upload it to GitHub Pages or run a local server instead.';
+      secureWarning.innerHTML = '<strong>Important:</strong> You opened this page as a local file. That can block model loading and prevent reliable Android AR launch. Upload it to GitHub Pages or run a local server instead.';
     } else if (!isSecureEnough) {
       secureWarning.classList.remove('hidden');
       secureWarning.innerHTML = '<strong>Important:</strong> This page is not on HTTPS or localhost. Real-world AR will not launch reliably until you serve it securely.';
     }
 
     model.addEventListener('load', () => {
-      setStatus('Model loaded. Desktop viewing should work now. On supported mobile devices, tap “View in your space” to launch AR.', 'ok');
-      try {
-        model.updateFraming();
-      } catch (e) {}
+      setStatus('UFO model loaded. Desktop viewing is online. On supported mobile devices, tap “View in your space” to launch AR.', 'ok');
+      try { model.updateFraming(); } catch (e) {}
     });
 
     model.addEventListener('error', (event) => {
-      const detail = event?.detail?.type ? ` (${event.detail.type})` : '';
-      setStatus(`If There's An Error, Please Let OdotNYC know right away. Thanks!`, 'error');
+      setStatus('Model load error. Make sure retro_ufo.glb is in the same folder as this index.html file.', 'error');
       console.error('model-viewer error:', event);
     });
 
@@ -322,9 +752,9 @@
       if (state === 'session-started') {
         setStatus('AR started. Move your phone slowly so AR can detect the floor and place the UFO.', 'ok');
       } else if (state === 'failed') {
-        setStatus('AR launch failed. This usually means the phone/browser does not support the selected AR mode, or the page is not being served securely.', 'error');
+        setStatus('AR launch failed. Check phone/browser support and make sure the page is served securely with HTTPS.', 'error');
       } else if (state === 'not-presenting') {
-        setStatus('AR closed. You can continue viewing the UFO in 3D here on the page.');
+        setStatus('AR closed. You can continue viewing the UFO in the orbital dock.');
       }
     });
   </script>
