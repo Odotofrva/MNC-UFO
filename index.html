@@ -548,7 +548,7 @@
           <div class="viewer-label"><span class="live-dot"></span> Orbital Dock Online</div>
           <model-viewer
             id="model"
-            src="./retro_ufo.glb"
+            src="retro_ufo.glb"
             alt="Interactive AR UFO 3D model"
             loading="eager"
             reveal="auto"
@@ -743,7 +743,7 @@
     });
 
     model.addEventListener('error', (event) => {
-      setStatus('Model load error. Make sure retro_ufo.glb is in the same folder as this index.html file.', 'error');
+      setStatus('Error?! Contact OdotNYC!', 'error');
       console.error('model-viewer error:', event);
     });
 
